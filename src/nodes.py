@@ -253,3 +253,4 @@ class TopicosPadrao:
         todos.update(cls.NAVEGACAO)
         todos.update(cls.VISAO)
         return todos
+
