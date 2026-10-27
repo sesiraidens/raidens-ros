@@ -254,3 +254,4 @@ class TopicosPadrao:
         todos.update(cls.VISAO)
         return todos
 
+
