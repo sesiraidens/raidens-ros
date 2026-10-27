@@ -1,15 +1,16 @@
 <div align="center">
 
-<img src="https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png" width="80">
+<img src="https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png" alt="Logo RAIDENS" width="140">
 
 # raidens-ros
 
-Nodes e configuracoes ROS2 para robos autônomos da RAIDENS.
+**Estrutura de nodes e tópicos ROS 2 para os robôs autônomos da RAIDENS**
 
-![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
-![ROS2](https://img.shields.io/badge/ROS2-Humble-22313E?style=flat)
-![License](https://img.shields.io/badge/License-MIT-d9333b?style=flat)
-![Status](https://img.shields.io/badge/Status-Active-2ea043?style=flat)
+![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![ROS 2](https://img.shields.io/badge/ROS_2-Humble-22314E?style=flat-square&logo=ros&logoColor=white)
+![Licença MIT](https://img.shields.io/badge/Licen%C3%A7a-MIT-D9333B?style=flat-square)
+
+[Sobre](#sobre) · [Instalação](#instalação) · [Nodes](#nodes) · [Tópicos](#tópicos-padrão) · [Launch](#gerando-launch-e-packagexml)
 
 </div>
 
@@ -17,122 +18,65 @@ Nodes e configuracoes ROS2 para robos autônomos da RAIDENS.
 
 ## Sobre
 
-O **raidens-ros** fornece uma estrutura base para integrar robos da RAIDENS com ROS2 (Robot Operating System 2). Inclui nodes, topics e geradores de launch.
+O **raidens-ros** é o ponto de partida da equipe para migrar os robôs para o ROS 2. Ele define, em Python puro, quais nodes o robô terá, quais tópicos cada um publica e assina e com quais tipos de mensagem. A partir disso, gera o `launch.py` e o `package.xml` do pacote.
 
----
+Com o desenho da arquitetura separado da implementação, a equipe pode discutir e revisar a comunicação entre as partes do robô antes de escrever código dependente do `rclpy`.
 
-## Estrutura
+## Instalação
 
-`
-raidens-ros/
-├── src/
-│   ├── nodes.py          # Nodes ROS2
-│   └── __init__.py
-├── examples/
-│   ├── launch_arquivo.py
-│   └── testar_nodes.py
-└── README.md
-`
+```bash
+git clone https://github.com/sesiraidens/raidens-ros.git
+cd raidens-ros
+```
 
----
+Para executar os pacotes gerados, instale o ROS 2 Humble:
+
+```bash
+sudo apt install ros-humble-desktop
+sudo apt install ros-humble-nav2-bringup ros-humble-vision-msgs
+```
 
 ## Nodes
 
-### NodeSensores
-
-Leitura e publicacao de dados de sensores.
-
-`python
-from src.nodes import NodeSensores
-
-node = NodeSensores()
-
-# Publicar dados
-node.publicar_ultrassonico(30.5)  # 30.5cm
-node.publicar_imu([0, 0, 9.8], [0, 0, 0])
-node.publicar_ir([0, 1, 0, 1, 0])
-`
-
-**Topics:**
-- /sensor/ultrassonico - Distancia (Range)
-- /sensor/imu - Aceleracao e giroscopio (Imu)
-- /sensor/ir - Sensores de linha (Int32MultiArray)
-
-### NodeMotores
-
-Controle de motores e odometria.
-
-`python
-from src.nodes import NodeMotores
-
-node = NodeMotores()
-node.receber_comando(0.3, 0.0)  # 0.3 m/s, sem rotacao
-node.publicar_odometria(posicao, orientacao)
-`
-
-**Topics:**
-- /cmd_vel - Comando de velocidade (Twist)
-- /motor/odometry - Odometria (Odometry)
-
-### NodeNavegacao
-
-Planejamento e seguimento de rota.
-
-`python
-from src.nodes import NodeNavegacao
-
-node = NodeNavegacao()
-node.definir_parametro("velocidade_maxima", 0.5)
-node.planear_rota(destino)
-node.seguir_rota(rota)
-`
-
-**Topics:**
-- /navegacao/destino - Destino (PoseStamped)
-- /navegacao/rota - Rota planejada (Path)
-
-### NodeVisao
-
-Processamento de imagem e deteccao.
-
-`python
-from src.nodes import NodeVisao
-
-node = NodeVisao()
-node.processar_frame(frame)
-node.publicar_deteccoes(deteccoes)
-`
-
-**Topics:**
-- /camera/image_raw - Imagem da camera (Image)
-- /visao/deteccoes - Deteccoes (Detection2DArray)
-
----
-
-## Topics Padrao
-
-`python
-from src.nodes import TopicosPadrao
-
-todos = TopicosPadrao.listar_todos()
-for nome, topico in todos.items():
-    print(f"{nome}: {topico}")
-`
-
-| Categoria | Topic | Tipo |
+| Node | Responsabilidade | Principais métodos |
 |---|---|---|
-| Ultrassonico | /sensor/ultrassonico | Range |
-| IMU | /sensor/imu | Imu |
-| IR | /sensor/ir | Int32MultiArray |
-| Camera | /camera/image_raw | Image |
-| Comando | /cmd_vel | Twist |
-| Odometria | /motor/odometry | Odometry |
+| `NodeSensores` | Publica leituras dos sensores | `publicar_ultrassonico`, `publicar_imu`, `publicar_ir` |
+| `NodeMotores` | Recebe comandos de velocidade e publica odometria | `receber_comando`, `publicar_odometria` |
+| `NodeNavegacao` | Planeja e segue rotas | `planear_rota`, `seguir_rota` |
+| `NodeVisao` | Processa a câmera e publica detecções | `processar_frame`, `publicar_deteccoes` |
 
----
+Todos herdam de `NodeBase`, que oferece `criar_topic`, `publicar`, `receber`, `definir_parametro` e `obter_parametro`.
 
-## Gerar Launch
+```python
+from src.nodes import NodeSensores, NodeMotores
 
-`python
+sensores = NodeSensores()
+sensores.publicar_ultrassonico(30.5)        # cm
+sensores.publicar_ir([0, 1, 0, 1, 0])
+
+motores = NodeMotores()
+motores.receber_comando(0.3, 0.0)           # 0,3 m/s, sem rotação
+```
+
+## Tópicos padrão
+
+| Categoria | Tópico | Tipo |
+|---|---|---|
+| Ultrassônico | `/sensor/ultrassonico` | `Range` |
+| IMU | `/sensor/imu` | `Imu` |
+| IR | `/sensor/ir` | `Int32MultiArray` |
+| Câmera | `/camera/image_raw` | `Image` |
+| Detecções | `/visao/deteccoes` | `Detection2DArray` |
+| Comando | `/cmd_vel` | `Twist` |
+| Odometria | `/motor/odometry` | `Odometry` |
+| Destino | `/navegacao/destino` | `PoseStamped` |
+| Rota | `/navegacao/rota` | `Path` |
+
+A lista completa fica em `TopicosPadrao.listar_todos()`.
+
+## Gerando launch e package.xml
+
+```python
 from src.nodes import ConfiguracaoROS, NodeSensores, NodeMotores
 
 config = ConfiguracaoROS()
@@ -141,25 +85,46 @@ config.adicionar_node(NodeMotores())
 
 config.gerar_launch("launch/raidens_launch.py")
 config.gerar_pkg_xml("package.xml")
-`
+```
+
+## Estrutura
+
+```text
+raidens-ros/
+└── src/
+    └── nodes.py   # Nodes, tópicos padrão e gerador de launch
+```
+
+## Ecossistema RAIDENS
+
+Este repositório faz parte de um conjunto de bibliotecas da equipe. Elas usam os mesmos nomes de classes e convenções, então o que você aprende em uma serve nas outras.
+
+| Repositório | Para quê |
+|---|---|
+| [`raidens-python`](https://github.com/sesiraidens/raidens-python) | Biblioteca principal em Python: sensores, motores e robôs prontos (seguidor, parede, resgate) |
+| [`raidens-arduino`](https://github.com/sesiraidens/raidens-arduino) | As mesmas abstrações em C++ para rodar direto no Arduino |
+| [`raidens-sensores`](https://github.com/sesiraidens/raidens-sensores) | Catálogo completo de sensores com calibração e filtragem |
+| [`raidens-motores`](https://github.com/sesiraidens/raidens-motores) | Motores DC, servo, passo, driver L298N e rodas mecanum |
+| [`raidens-pid`](https://github.com/sesiraidens/raidens-pid) | Controladores PID, PID avançado, cascata e sintonia Ziegler-Nichols |
+| [`raidens-opencv`](https://github.com/sesiraidens/raidens-opencv) | Visão computacional: cores, linhas e navegação por câmera |
+| [`raidens-lab`](https://github.com/sesiraidens/raidens-lab) | Calibração interativa de cores em HSV e LAB |
+| [`raidens-obr`](https://github.com/sesiraidens/raidens-obr) | Robô completo para a OBR, integrando sensores, motores e missões |
+| [`raidens-electronics`](https://github.com/sesiraidens/raidens-electronics) | Cálculos e modelos de componentes eletrônicos |
+| [`raidens-3d`](https://github.com/sesiraidens/raidens-3d) | Peças 3D paramétricas geradas em OpenSCAD |
+| [`raidens-snippets`](https://github.com/sesiraidens/raidens-snippets) | Trechos de código prontos para copiar e colar |
 
 ---
 
-## Instalacao ROS2
+<div align="center">
 
-`ash
-# Instalar ROS2 Humble
-sudo apt install ros-humble-desktop
+<img src="https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png" alt="Logo RAIDENS" width="56">
 
-# Instalar pacotes adicionais
-sudo apt install ros-humble-nav2-bringup
-sudo apt install ros-humble-vision-msgs
-`
+**Equipe RAIDENS** · SESI 192 Alumínio/SP
 
----
+[![Email](https://img.shields.io/badge/Email-sesiraidens%40gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:sesiraidens@gmail.com)
+[![Linktree](https://img.shields.io/badge/Linktree-sesiraidens-39E06B?style=flat-square&logo=linktree&logoColor=white)](https://linktr.ee/sesiraidens)
+[![GitHub](https://img.shields.io/badge/GitHub-sesiraidens-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/sesiraidens)
 
-## Equipe
+<sub>Desenvolvido pela equipe RAIDENS para fins educacionais. Licenciado sob MIT.</sub>
 
-**RAIDENS - SESI Aluminio 192**
-
-Desenvolvido para uso interno da equipe. Licenciado sob MIT.
+</div>
